@@ -87,16 +87,26 @@ function drawGlassCircle(x, y, d) {
   var numClusters = int(random(1, 4)); // 1–3 clusters
   var maxTries = 100;
 
+  // Precompute cluster radii, smaller for later clusters
+  var clusterRadii = [];
   for (var i = 0; i < numClusters; i++) {
-    var tries = 0;
-    while (tries < maxTries) {
-      // cluster radius
-      var clusterRadius = d * random(0.3, 0.6);
+    // gradually smaller for later clusters
+    var maxR = (d / 2) * (0.5 - i * 0.12);
+    var minR = (d / 2) * 0.2;
+    clusterRadii.push(random(minR, maxR) * 2); // diameter
+  }
 
-      // candidate position
+  for (var i = 0; i < numClusters; i++) {
+    var clusterRadius = clusterRadii[i];
+    // clamp radius to fit inside bubble
+    clusterRadius = min(clusterRadius, d / 2 - 2);
+
+    var placed = false;
+    var tries = 0;
+
+    while (!placed && tries < maxTries) {
       var angle = random(TWO_PI);
       var distFromCenter = random(0, d / 2 - clusterRadius);
-
       var clusterX = x + cos(angle) * distFromCenter;
       var clusterY = y + sin(angle) * distFromCenter;
 
@@ -113,14 +123,18 @@ function drawGlassCircle(x, y, d) {
 
       if (valid) {
         clusters.push({ x: clusterX, y: clusterY, r: clusterRadius });
-        break;
+        placed = true;
+      } else if (i === numClusters - 1 && tries === maxTries - 1) {
+        // last cluster, shrink & retry
+        clusterRadius *= 0.7;
+        tries = 0;
       }
 
       tries++;
     }
   }
 
-  // draw each cluster
+  // Draw clusters
   for (var i = 0; i < clusters.length; i++) {
     var c = clusters[i];
     drawPaintInside(c.x, c.y, c.r);
