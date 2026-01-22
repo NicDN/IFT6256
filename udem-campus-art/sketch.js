@@ -83,10 +83,50 @@ function drawPaintInside(x, y, d) {
 }
 
 function drawGlassCircle(x, y, d) {
-  // paint inside first
-  drawPaintInside(x, y, d);
+  var clusters = [];
+  var numClusters = int(random(1, 4)); // 1–3 clusters
+  var maxTries = 100;
 
-  // glass body
+  for (var i = 0; i < numClusters; i++) {
+    var tries = 0;
+    while (tries < maxTries) {
+      // cluster radius
+      var clusterRadius = d * random(0.3, 0.6);
+
+      // candidate position
+      var angle = random(TWO_PI);
+      var distFromCenter = random(0, d / 2 - clusterRadius);
+
+      var clusterX = x + cos(angle) * distFromCenter;
+      var clusterY = y + sin(angle) * distFromCenter;
+
+      // check overlap with existing clusters
+      var valid = true;
+      for (var j = 0; j < clusters.length; j++) {
+        var c = clusters[j];
+        var distCenters = dist(clusterX, clusterY, c.x, c.y);
+        if (distCenters < clusterRadius + c.r) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid) {
+        clusters.push({ x: clusterX, y: clusterY, r: clusterRadius });
+        break;
+      }
+
+      tries++;
+    }
+  }
+
+  // draw each cluster
+  for (var i = 0; i < clusters.length; i++) {
+    var c = clusters[i];
+    drawPaintInside(c.x, c.y, c.r);
+  }
+
+  // Glass overlay
   noStroke();
   fill(255, 255, 255, 60);
   circle(x, y, d);
@@ -95,7 +135,7 @@ function drawGlassCircle(x, y, d) {
   fill(255, 255, 255, 35);
   circle(x, y, d * 0.85);
 
-  // outline
+  // subtle outline
   noFill();
   stroke(255, 255, 255, 80);
   strokeWeight(1);
