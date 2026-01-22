@@ -1,7 +1,7 @@
 var w, h;
 var cnv;
 
-var NUM_CIRCLES = 160;
+var NUM_CIRCLES = 130;
 var circles = [];
 
 var PALETTE = [
@@ -29,18 +29,24 @@ function centerCanvas() {
   cnv.position(x, y);
 }
 
-function drawPaintInside(x, y, d) {
+function drawPaintInside(x, y, d, colorLayers = null) {
   var ctx = drawingContext;
-
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, d / 2, 0, TWO_PI);
   ctx.clip();
 
-  var numLayers = int(random(3, 5)); // 3–5 layers
-  var layerMaxRadius = d / 2;
+  let numLayers;
 
-  var colors = shuffle([...PALETTE]);
+  // If a palette is passed, use it
+  if (colorLayers) {
+    numLayers = colorLayers.length;
+  } else {
+    numLayers = int(random(3, 5)); // random layers
+    colorLayers = shuffle([...PALETTE]).slice(0, numLayers);
+  }
+
+  var layerMaxRadius = d / 2;
 
   for (var layer = 0; layer < numLayers; layer++) {
     var layerRadius = layerMaxRadius * (1 - (layer / numLayers) * 0.6);
@@ -48,19 +54,16 @@ function drawPaintInside(x, y, d) {
     var spacingFactor = map(layer, 0, numLayers - 1, 0.5, 1);
     var numDrops = int(random(60, 120) * spacingFactor);
 
-    var base = colors[layer % colors.length];
+    var base = colorLayers[layer]; // use exact order
 
     for (var i = 0; i < numDrops; i++) {
-      var r = random(1, 1.5); // tiny 2–3 px diameter
+      var r = random(1, 1.5);
       var angle = random(TWO_PI);
 
       var radius;
-
       if (layer == numLayers - 1) {
-        // innermost layer → fill the disk
         radius = random(0, layerRadius - r);
       } else {
-        // outer layers → ring-like
         radius = layerRadius + random(-layerRadius * 0.2, layerRadius * 0.2);
       }
 
@@ -80,6 +83,7 @@ function drawPaintInside(x, y, d) {
   }
 
   ctx.restore();
+  return colorLayers;
 }
 
 function drawGlassCircle(x, y, d) {
@@ -90,16 +94,17 @@ function drawGlassCircle(x, y, d) {
   // Precompute cluster radii, smaller for later clusters
   var clusterRadii = [];
   for (var i = 0; i < numClusters; i++) {
-    // gradually smaller for later clusters
     var maxR = (d / 2) * (0.5 - i * 0.12);
     var minR = (d / 2) * 0.2;
-    clusterRadii.push(random(minR, maxR) * 2); // diameter
+    clusterRadii.push(random(minR, maxR) * 2); // scaled
   }
 
+  // Generate **shared color layers** for this glass circle
+  var numLayers = int(random(3, 5));
+  var sharedPalette = shuffle([...PALETTE]).slice(0, numLayers);
+
   for (var i = 0; i < numClusters; i++) {
-    var clusterRadius = clusterRadii[i];
-    // clamp radius to fit inside bubble
-    clusterRadius = min(clusterRadius, d / 2 - 2);
+    var clusterRadius = min(clusterRadii[i], d / 2 - 2);
 
     var placed = false;
     var tries = 0;
@@ -110,12 +115,10 @@ function drawGlassCircle(x, y, d) {
       var clusterX = x + cos(angle) * distFromCenter;
       var clusterY = y + sin(angle) * distFromCenter;
 
-      // check overlap with existing clusters
       var valid = true;
       for (var j = 0; j < clusters.length; j++) {
         var c = clusters[j];
-        var distCenters = dist(clusterX, clusterY, c.x, c.y);
-        if (distCenters < clusterRadius + c.r) {
+        if (dist(clusterX, clusterY, c.x, c.y) < clusterRadius + c.r) {
           valid = false;
           break;
         }
@@ -125,7 +128,6 @@ function drawGlassCircle(x, y, d) {
         clusters.push({ x: clusterX, y: clusterY, r: clusterRadius });
         placed = true;
       } else if (i === numClusters - 1 && tries === maxTries - 1) {
-        // last cluster, shrink & retry
         clusterRadius *= 0.7;
         tries = 0;
       }
@@ -134,10 +136,10 @@ function drawGlassCircle(x, y, d) {
     }
   }
 
-  // Draw clusters
+  // Draw clusters using **shared palette**
   for (var i = 0; i < clusters.length; i++) {
     var c = clusters[i];
-    drawPaintInside(c.x, c.y, c.r);
+    drawPaintInside(c.x, c.y, c.r, sharedPalette);
   }
 
   // Glass overlay
