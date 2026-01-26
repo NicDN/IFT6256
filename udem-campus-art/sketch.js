@@ -34,7 +34,7 @@ function drawPaintInside(x, y, d, colorLayers = null) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, d / 2, 0, TWO_PI);
-  ctx.clip();
+  ctx.clip(); // Clip a circle area
 
   let numLayers;
 
@@ -48,14 +48,17 @@ function drawPaintInside(x, y, d, colorLayers = null) {
 
   var layerMaxRadius = d / 2;
 
+  // loop through layers
   for (var layer = 0; layer < numLayers; layer++) {
-    var layerRadius = layerMaxRadius * (1 - (layer / numLayers) * 0.6);
+    var layerRadius = layerMaxRadius * (1 - (layer / numLayers) * 0.6); // shrink radius per layer
 
+    // More drops for inner layers
     var spacingFactor = map(layer, 0, numLayers - 1, 0.5, 1);
     var numDrops = int(random(60, 120) * spacingFactor);
 
-    var base = colorLayers[layer]; // use exact order
+    var base = colorLayers[layer];
 
+    // Draw drops for this layer
     for (var i = 0; i < numDrops; i++) {
       var r = random(1, 1.5);
       var angle = random(TWO_PI);
@@ -70,6 +73,10 @@ function drawPaintInside(x, y, d, colorLayers = null) {
       var px = x + cos(angle) * radius;
       var py = y + sin(angle) * radius;
 
+      // Sets color of a droplet
+      // Random(-20,20) to add some variation
+      // constrain to keep in 0-255 range
+      // random alpha for layering effect
       fill(
         constrain(base[0] + random(-20, 20), 0, 255),
         constrain(base[1] + random(-20, 20), 0, 255),
@@ -85,22 +92,24 @@ function drawPaintInside(x, y, d, colorLayers = null) {
   ctx.restore();
   return colorLayers;
 }
-
+// One cluster -> one pating of colours
+// One glass -> multiple clusters with shared colours
 function drawGlassCircle(x, y, d) {
   var clusters = [];
-  var numClusters = int(random(1, 4)); // 1–3 clusters
+  var numClusters = int(random(1, 4)); // TODO: Here are randomized 1–3 clusters
   var maxTries = 100;
 
-  // Precompute cluster radii, smaller for later clusters
+  // Precompute cluster radius, (generates radius of each cluster)
+  // Size relative to glass circle diameter
   var clusterRadii = [];
   for (var i = 0; i < numClusters; i++) {
     var maxR = (d / 2) * (0.5 - i * 0.12);
     var minR = (d / 2) * 0.2;
-    clusterRadii.push(random(minR, maxR) * 2); // scaled
+    clusterRadii.push(random(minR, maxR) * 2); // 2 is a scaling factor
   }
 
-  // Generate **shared color layers** for this glass circle
-  var numLayers = int(random(3, 5));
+  // Generate a shared color layers
+  var numLayers = int(random(3, 5)); // TODO: Random layers of colours
   var sharedPalette = shuffle([...PALETTE]).slice(0, numLayers);
 
   for (var i = 0; i < numClusters; i++) {
@@ -109,6 +118,7 @@ function drawGlassCircle(x, y, d) {
     var placed = false;
     var tries = 0;
 
+    // Placing the clusters
     while (!placed && tries < maxTries) {
       var angle = random(TWO_PI);
       var distFromCenter = random(0, d / 2 - clusterRadius);
@@ -136,22 +146,22 @@ function drawGlassCircle(x, y, d) {
     }
   }
 
-  // Draw clusters using **shared palette**
+  // Draw clusters using the shared palette
   for (var i = 0; i < clusters.length; i++) {
     var c = clusters[i];
     drawPaintInside(c.x, c.y, c.r, sharedPalette);
   }
 
-  // Glass overlay
+  // glass overlay
   noStroke();
   fill(255, 255, 255, 60);
   circle(x, y, d);
 
-  // inner glow
+  // glass inner glow
   fill(255, 255, 255, 35);
   circle(x, y, d * 0.85);
 
-  // subtle outline
+  // glass outline
   noFill();
   stroke(255, 255, 255, 80);
   strokeWeight(1);
@@ -171,6 +181,7 @@ function drawMetallicBorder() {
   }
 }
 
+// ******** ENTRY DRAW POINT ********
 function draw() {
   background(157, 212, 114);
 
@@ -188,21 +199,21 @@ function draw() {
     drawGlassCircle(c.x, c.y, c.d);
   }
 
-  // Draw metallic border on top
   drawMetallicBorder();
 }
 
 function placeCircle() {
-  var maxTries = 500;
+  var maxTries = 500; // tries 500 times to place a circle
   var tries = 0;
 
   while (tries < maxTries) {
-    var d = random(10, 60);
+    var d = random(10, 60); // TODO: Random diameter of circles between 10 and 60
     var x = random(d / 2, w - d / 2);
     var y = random(d / 2, h - d / 2);
 
     var valid = true;
 
+    // Check for overlaps with existing circles
     for (var i = 0; i < circles.length; i++) {
       var other = circles[i];
       var distCenters = dist(x, y, other.x, other.y);
