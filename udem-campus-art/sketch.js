@@ -29,6 +29,7 @@ function centerCanvas() {
   cnv.position(x, y);
 }
 
+// Draws paint droplets inside a cluster
 function drawPaintInside(x, y, d, colorLayers = null) {
   var ctx = drawingContext;
   ctx.save();
@@ -53,8 +54,8 @@ function drawPaintInside(x, y, d, colorLayers = null) {
     var layerRadius = layerMaxRadius * (1 - (layer / numLayers) * 0.6); // shrink radius per layer
 
     // More drops for inner layers
-    var spacingFactor = map(layer, 0, numLayers - 1, 0.5, 1);
-    var numDrops = int(random(60, 120) * spacingFactor);
+    var spacingFactor = map(layer, 0, numLayers - 1, 0.5, 1); // gradient map from 0.5 to 1 outer->inner layers
+    var numDrops = int(random(60, 120) * spacingFactor); // TODO: Random drops per layer multiplied by factor
 
     var base = colorLayers[layer];
 
@@ -65,9 +66,9 @@ function drawPaintInside(x, y, d, colorLayers = null) {
 
       var radius;
       if (layer == numLayers - 1) {
-        radius = random(0, layerRadius - r);
+        radius = random(0, layerRadius - r); // center fill for last layer
       } else {
-        radius = layerRadius + random(-layerRadius * 0.2, layerRadius * 0.2);
+        radius = layerRadius + random(-layerRadius * 0.2, layerRadius * 0.2); // ring effect
       }
 
       var px = x + cos(angle) * radius;
@@ -96,21 +97,22 @@ function drawPaintInside(x, y, d, colorLayers = null) {
 // One glass -> multiple clusters with shared colours
 function drawGlassCircle(x, y, d) {
   var clusters = [];
-  var numClusters = int(random(1, 4)); // TODO: Here are randomized 1–3 clusters
+  var numClusters = int(random(1, 4)); // TODO: Here are randomized number of clusters
   var maxTries = 100;
 
   // Precompute cluster radius, (generates radius of each cluster)
   // Size relative to glass circle diameter
+  // The first cluster is the largest, the last is the smallest
   var clusterRadii = [];
   for (var i = 0; i < numClusters; i++) {
     var maxR = (d / 2) * (0.5 - i * 0.12);
     var minR = (d / 2) * 0.2;
-    clusterRadii.push(random(minR, maxR) * 2); // 2 is a scaling factor
+    clusterRadii.push(random(minR, maxR) * 2); // Randomize the cluster, 2 is a scaling factor
   }
 
   // Generate a shared color layers
   var numLayers = int(random(3, 5)); // TODO: Random layers of colours
-  var sharedPalette = shuffle([...PALETTE]).slice(0, numLayers);
+  var sharedPalette = shuffle([...PALETTE]).slice(0, numLayers); // Select random colours from PALETTE
 
   for (var i = 0; i < numClusters; i++) {
     var clusterRadius = min(clusterRadii[i], d / 2 - 2);
@@ -138,7 +140,7 @@ function drawGlassCircle(x, y, d) {
         clusters.push({ x: clusterX, y: clusterY, r: clusterRadius });
         placed = true;
       } else if (i === numClusters - 1 && tries === maxTries - 1) {
-        clusterRadius *= 0.7;
+        clusterRadius *= 0.7; // Reduce size of cluster to fit
         tries = 0;
       }
 
@@ -152,6 +154,7 @@ function drawGlassCircle(x, y, d) {
     drawPaintInside(c.x, c.y, c.r, sharedPalette);
   }
 
+  // Replicate glass effect
   // glass overlay
   noStroke();
   fill(255, 255, 255, 60);
