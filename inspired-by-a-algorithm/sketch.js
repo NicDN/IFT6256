@@ -8,10 +8,12 @@ function setup() {
   createCanvas(800, 800);
   angleMode(RADIANS);
   frameRate(30);
+  colorMode(HSB, 360, 100, 100, 1); // Use HSB for depth-based color
   restartTree();
 }
 
 function draw() {
+  background(10, 15, 25); // clear each frame for smooth bloom animation
   translate(width / 2, height);
 
   drawBranch(160, 0);
@@ -32,14 +34,18 @@ function draw() {
 }
 
 function drawBranch(length, depth) {
-  stroke(120 + depth * 12, 180 - depth * 10, 255 - depth * 18, 200);
-
-  strokeWeight(map(length, 0, 160, 1, 7));
-
-  line(0, 0, 0, -length);
-  translate(0, -length);
-
   if (depth < maxDepth) {
+    // Depth-based color for branches
+    let branchHue = map(depth, 0, maxAllowedDepth, 30, 150); // brown → green
+    let branchSat = map(depth, 0, maxAllowedDepth, 80, 70); // slight saturation decrease
+    let branchBright = map(depth, 0, maxAllowedDepth, 50, 90); // brighter tips
+    stroke(branchHue, branchSat, branchBright, 0.8);
+
+    strokeWeight(map(length, 0, 160, 1, 7));
+    line(0, 0, 0, -length);
+    translate(0, -length);
+
+    // recursive branches
     push();
     rotate(angleVariation);
     drawBranch(length * 0.72, depth + 1);
@@ -50,14 +56,26 @@ function drawBranch(length, depth) {
     drawBranch(length * 0.72, depth + 1);
     pop();
   } else {
+    // bloom leaves
+    let pulse = sin(frameCount * 0.15 + depth * 3) * 4;
+
     noStroke();
-    fill(255, 220, 255, 180);
-    circle(0, 0, 6);
+
+    // Pinkish bloom leaves
+    let leafHue =
+      map(depth, 0, maxAllowedDepth, 300, 330) +
+      map(sin(frameCount * 0.05 + depth), -1, 1, -5, 5);
+    fill(leafHue, 70, 100, 0.6);
+    fill(leafHue, 70, 100, 0.6);
+    circle(0, 0, 8 + pulse);
+
+    // subtle outer glow
+    fill(leafHue, 40, 100, 0.2);
+    circle(0, 0, 16 + pulse * 2);
   }
 }
 
 function restartTree() {
-  background(10, 15, 25);
   maxDepth = 0;
   finished = false;
   angleVariation = random(PI / 6, PI / 3);
