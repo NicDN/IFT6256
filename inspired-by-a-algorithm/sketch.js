@@ -61,17 +61,18 @@ function drawBranch(length, depth) {
 
     noStroke();
 
-    // Pinkish bloom leaves
+    // Pinkish bloom leaves with random hue and size (solution 4)
     let leafHue =
       map(depth, 0, maxAllowedDepth, 300, 330) +
+      random(-5, 5) + // small random hue offset
       map(sin(frameCount * 0.05 + depth), -1, 1, -5, 5);
+    let leafSize = 8 + pulse + random(-2, 2); // random size variation
     fill(leafHue, 70, 100, 0.6);
-    fill(leafHue, 70, 100, 0.6);
-    circle(0, 0, 8 + pulse);
+    circle(0, 0, leafSize);
 
-    // subtle outer glow
+    // subtle outer glow with slight size randomness
     fill(leafHue, 40, 100, 0.2);
-    circle(0, 0, 16 + pulse * 2);
+    circle(0, 0, 16 + pulse * 2 + random(-2, 2));
   }
 }
 
