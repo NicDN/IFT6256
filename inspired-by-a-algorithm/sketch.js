@@ -1,23 +1,31 @@
 let maxDepth = 0;
-let maxAllowedDepth; // RANDOMIZED
+let maxAllowedDepth;
 let angleVariation;
 let finished = false;
-let growthInterval = 25; // GROWTH SPEED
+let growthInterval = 25; // growth speed
 
 function setup() {
   createCanvas(1000, 1000);
   angleMode(RADIANS);
   frameRate(30);
-  colorMode(HSB, 360, 100, 100, 1); //HSB for depth based color
-  restartTree();
+  colorMode(HSB, 360, 100, 100, 1);
+  restartSnowflake();
 }
 
 function draw() {
-  background(10, 15, 25);
-  translate(width / 2, height);
+  background(210, 40, 15); // dark icy blue
 
-  drawBranch(200, 0);
+  translate(width / 2, height / 2);
 
+  // Draw 6 symmetrical arms
+  for (let i = 0; i < 6; i++) {
+    push();
+    rotate((TWO_PI / 6) * i);
+    drawArm(220, 0);
+    pop();
+  }
+
+  // Growth logic
   if (!finished) {
     if (frameCount % growthInterval === 0) {
       maxDepth++;
@@ -27,63 +35,54 @@ function draw() {
       finished = true;
 
       setTimeout(() => {
-        restartTree();
+        restartSnowflake();
       }, 5000);
     }
   }
 }
 
-function drawBranch(length, depth) {
+function drawArm(length, depth) {
   if (depth < maxDepth) {
-    // Depth based color branches
-    let branchHue = map(depth, 0, maxAllowedDepth, 30, 150); // brown to green
-    let branchSat = map(depth, 0, maxAllowedDepth, 80, 70); // saturation decrease
-    let branchBright = map(depth, 0, maxAllowedDepth, 50, 90); // tips are brighter
-    stroke(branchHue, branchSat, branchBright, 0.8);
+    // Crystal-like coloring
+    let hue = 190 + depth * 4;
+    let brightness = map(depth, 0, maxAllowedDepth, 70, 100);
+    stroke(hue, 25, brightness, 0.9);
 
-    strokeWeight(map(length, 0, 160, 1, 7));
+    strokeWeight(map(length, 0, 220, 1, 5));
     line(0, 0, 0, -length);
     translate(0, -length);
 
-    // right branch
+    // Side branches (crystal growth)
     push();
     rotate(angleVariation);
-    drawBranch(length * 0.72, depth + 1);
+    drawArm(length * 0.6, depth + 1);
     pop();
 
-    // left branch
     push();
     rotate(-angleVariation);
-    drawBranch(length * 0.72, depth + 1);
+    drawArm(length * 0.6, depth + 1);
     pop();
   } else {
-    // Leaf pulse based on depth
-    let pulse = sin(frameCount * 0.15 + depth * 3) * 4;
-
+    // Sparkling crystal tip
     noStroke();
 
-    // Pink leaves with (random hue and size)
-    let leafHue =
-      map(depth, 0, maxAllowedDepth, 300, 330) +
-      random(-5, 5) + // RANDOM hue offset
-      map(sin(frameCount * 0.05 + depth), -1, 1, -5, 5);
-    let leafSize = 8 + pulse + random(-2, 2); // RANDOM size variation
-    fill(leafHue, 70, 100, 0.6);
-    circle(0, 0, leafSize);
+    let sparkle = 6 + sin(frameCount * 0.25 + depth) * 2;
 
-    // Outer glow for leaves
-    fill(leafHue, 40, 100, 0.2);
-    circle(0, 0, 16 + pulse * 2 + random(-2, 2));
+    fill(200, 15, 100, 0.9);
+    circle(0, 0, sparkle);
+
+    fill(200, 10, 100, 0.3);
+    circle(0, 0, sparkle * 2);
   }
 }
 
-function restartTree() {
+function restartSnowflake() {
   maxDepth = 0;
   finished = false;
 
-  // Randomize max depth between 7 and 12
-  maxAllowedDepth = floor(random(7, 10));
+  // Randomized crystal complexity
+  maxAllowedDepth = floor(random(4, 7));
 
-  // Randomize branch angle
-  angleVariation = random(PI / 6, PI / 3);
+  // Randomized branching angle
+  angleVariation = random(PI / 8, PI / 5);
 }
