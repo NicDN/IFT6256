@@ -1,7 +1,7 @@
 let maxDepth = 0;
 let maxAllowedDepth;
 let finished = false;
-let growthInterval = 25;
+let growthInterval = 25; // Every 25 frames we will be increasing the depth of the snowflake arms
 
 let arms = [];
 let armCount = 6;
@@ -14,15 +14,17 @@ function setup() {
   restartSnowflake();
 }
 
+// Ran every frame
 function draw() {
-  background(210, 40, 15);
+  background(210, 40, 15); // Redraws background every frame
 
   translate(width / 2, height / 2); // Center snowflake
 
   // Draw each arm
   for (let i = 0; i < armCount; i++) {
     push();
-    rotate((TWO_PI / armCount) * i);
+    // Example, if armCount=6, rotate 60 degrees for each arm
+    rotate((TWO_PI / armCount) * i); // Rotate evenly for each arm
     drawArm(arms[i].baseLength, 0, arms[i]);
     pop();
   }
@@ -40,6 +42,7 @@ function draw() {
 }
 
 function drawArm(length, depth, settings) {
+  // Stop condition
   if (depth < maxDepth) {
     let hue = settings.hueBase + depth * settings.hueShift;
     let brightness = map(depth, 0, maxAllowedDepth, 70, 100);
@@ -47,19 +50,23 @@ function drawArm(length, depth, settings) {
     stroke(hue, 25, brightness, 0.9);
     strokeWeight(map(length, 0, 220, 1, 5));
 
+    // Draw main arm
     line(0, 0, 0, -length);
     translate(0, -length);
 
+    // Right branch
     push();
     rotate(settings.angle);
     drawArm(length * settings.scale, depth + 1, settings);
     pop();
 
+    // Right branch
     push();
     rotate(-settings.angle);
     drawArm(length * settings.scale, depth + 1, settings);
     pop();
   } else {
+    // When recursive stops
     noStroke();
 
     let sparkle = 6 + sin(frameCount * 0.25 + depth) * 2;
