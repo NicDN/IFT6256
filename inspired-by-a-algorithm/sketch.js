@@ -1,11 +1,13 @@
 let maxDepth = 0;
 let maxAllowedDepth;
-let angleVariation;
 let finished = false;
-let growthInterval = 25; // growth speed
+let growthInterval = 25;
+
+let arms = [];
+let armCount = 6;
 
 function setup() {
-  createCanvas(1000, 1000);
+  createCanvas(1500, 1500);
   angleMode(RADIANS);
   frameRate(30);
   colorMode(HSB, 360, 100, 100, 1);
@@ -13,19 +15,18 @@ function setup() {
 }
 
 function draw() {
-  background(210, 40, 15); // dark icy blue
+  background(210, 40, 15);
 
-  translate(width / 2, height / 2);
+  translate(width / 2, height / 2); // Center snowflake
 
-  // Draw 6 symmetrical arms
-  for (let i = 0; i < 6; i++) {
+  // Draw each arm
+  for (let i = 0; i < armCount; i++) {
     push();
-    rotate((TWO_PI / 6) * i);
-    drawArm(220, 0);
+    rotate((TWO_PI / armCount) * i);
+    drawArm(arms[i].baseLength, 0, arms[i]);
     pop();
   }
 
-  // Growth logic
   if (!finished) {
     if (frameCount % growthInterval === 0) {
       maxDepth++;
@@ -33,45 +34,40 @@ function draw() {
 
     if (maxDepth > maxAllowedDepth) {
       finished = true;
-
-      setTimeout(() => {
-        restartSnowflake();
-      }, 5000);
+      setTimeout(() => restartSnowflake(), 5000);
     }
   }
 }
 
-function drawArm(length, depth) {
+function drawArm(length, depth, settings) {
   if (depth < maxDepth) {
-    // Crystal-like coloring
-    let hue = 190 + depth * 4;
+    let hue = settings.hueBase + depth * settings.hueShift;
     let brightness = map(depth, 0, maxAllowedDepth, 70, 100);
-    stroke(hue, 25, brightness, 0.9);
 
+    stroke(hue, 25, brightness, 0.9);
     strokeWeight(map(length, 0, 220, 1, 5));
+
     line(0, 0, 0, -length);
     translate(0, -length);
 
-    // Side branches (crystal growth)
     push();
-    rotate(angleVariation);
-    drawArm(length * 0.6, depth + 1);
+    rotate(settings.angle);
+    drawArm(length * settings.scale, depth + 1, settings);
     pop();
 
     push();
-    rotate(-angleVariation);
-    drawArm(length * 0.6, depth + 1);
+    rotate(-settings.angle);
+    drawArm(length * settings.scale, depth + 1, settings);
     pop();
   } else {
-    // Sparkling crystal tip
     noStroke();
 
     let sparkle = 6 + sin(frameCount * 0.25 + depth) * 2;
 
-    fill(200, 15, 100, 0.9);
+    fill(settings.hueBase, 15, 100, 0.9);
     circle(0, 0, sparkle);
 
-    fill(200, 10, 100, 0.3);
+    fill(settings.hueBase, 10, 100, 0.3);
     circle(0, 0, sparkle * 2);
   }
 }
@@ -80,9 +76,18 @@ function restartSnowflake() {
   maxDepth = 0;
   finished = false;
 
-  // Randomized crystal complexity
   maxAllowedDepth = floor(random(4, 7));
 
-  // Randomized branching angle
-  angleVariation = random(PI / 8, PI / 5);
+  arms = [];
+
+  // Random parameters per arm
+  for (let i = 0; i < armCount; i++) {
+    arms.push({
+      angle: random(PI / 10, PI / 4),
+      scale: random(0.55, 0.7),
+      hueBase: random(180, 210),
+      hueShift: random(2, 6),
+      baseLength: random(180, 240),
+    });
+  }
 }
