@@ -1,7 +1,7 @@
 let maxDepth = 0;
 let maxAllowedDepth;
 let finished = false;
-let growthInterval = 25; // Every 25 frames we will be increasing the depth of the snowflake arms
+let growthInterval = 10; // Every 25 frames we will be increasing the depth of the snowflake arms
 
 let arms = [];
 let armCount = 6;
@@ -83,7 +83,7 @@ function restartSnowflake() {
   maxDepth = 0;
   finished = false;
 
-  maxAllowedDepth = floor(random(4, 7));
+  maxAllowedDepth = floor(random(4, 10));
 
   arms = [];
 
