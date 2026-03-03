@@ -1,18 +1,18 @@
-// p5.js Climate Clock for NASA GISTEMP-style whitespace table
-// 1 ring per year, 12 arcs per ring (Jan..Dec)
-// Color: cold->blue, hot->red
-// Missing values: "***" are skipped
-
 let rawLines;
-let rows = []; // { year, months:[12] }
+let rows = [];      // {year, months[12]}
+let segments = [];  // flattened: {year, yearIndex, monthIndex, anomaly}
+
 let minA = Infinity, maxA = -Infinity;
 
-let rot = 0;
-let showLabels = true;
+let revealCount = 0;
+let lastStepMs = 0;
+let intervalMs = 200; // 1 second per month segment
+let paused = false;
 
+const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function preload() {
-  rawLines = loadStrings("data/dataset.csv"); // your downloaded file
+  rawLines = loadStrings("data/dataset.csv");
 }
 
 function setup() {
@@ -21,81 +21,86 @@ function setup() {
   colorMode(HSB, 360, 100, 100, 1);
 
   parseGistempLikeTable(rawLines);
+  buildSegments();
 
-  if (rows.length === 0) {
-    throw new Error("Parsed 0 rows. Check file path and that year lines look like: 1880 -.19 -.25 ...");
-  }
-
-  // Fallback if min/max didn't compute for some reason
-  if (!isFinite(minA) || !isFinite(maxA) || minA === maxA) {
-    minA = -1; maxA = 2;
-  }
+  if (segments.length === 0) throw new Error("No segments built. Check parsing.");
+  lastStepMs = millis();
 }
 
 function draw() {
   background(225, 25, 7);
 
-  translate(width / 2, height / 2);
-  rot += 0.0018;
-  rotate(rot);
+  // advance reveal counter at a fixed interval
+  if (!paused) {
+    const now = millis();
+    if (now - lastStepMs >= intervalMs) {
+      const steps = floor((now - lastStepMs) / intervalMs);
+      revealCount = min(revealCount + steps, segments.length);
+      lastStepMs += steps * intervalMs;
+    }
+  }
 
+  translate(width / 2, height / 2);
+
+  // layout
   const nYears = rows.length;
   const outerR = min(width, height) * 0.46;
   const innerR = 22;
   const ringStep = (outerR - innerR) / max(1, nYears);
 
-  const seg = TWO_PI / 12;
+  const segAngle = TWO_PI / 12;
   const maxAbs = max(abs(minA), abs(maxA));
 
+  // draw only up to revealCount
   noFill();
   strokeCap(SQUARE);
 
-  for (let i = 0; i < nYears; i++) {
-    const yearRow = rows[i];
+  for (let i = 0; i < revealCount; i++) {
+    const s = segments[i];
+    const a = s.anomaly;
 
-    // older years slightly dimmer
-    const alpha = map(i, 0, nYears - 1, 0.18, 1.0);
+    // Still “counts” as a month, but if missing (***) then draw nothing
+    if (!isFinite(a)) continue;
 
-    const rBase = innerR + i * ringStep;
+    const rBase = innerR + s.yearIndex * ringStep;
 
-    for (let m = 0; m < 12; m++) {
-      const a = yearRow.months[m];
-      if (!isFinite(a)) continue;
+    // month angle (Jan at top)
+    const t0 = -HALF_PI + s.monthIndex * segAngle;
+    const t1 = t0 + segAngle;
 
-      // Jan at top, clockwise
-      const t0 = -HALF_PI + m * seg;
-      const t1 = t0 + seg;
+    // color: cold -> blue, warm -> red
+    const hue = map(a, minA, maxA, 210, 0);
 
-      // hue mapping: blue (cold) -> red (hot)
-      const hue = map(a, minA, maxA, 210, 0);
+    // radius bulge: warm outward, cold inward
+    const rOffset = map(a, minA, maxA, -ringStep * 0.9, ringStep * 0.9);
+    const r = rBase + rOffset;
 
-      // bulge radius by anomaly
-      const rOffset = map(a, minA, maxA, -ringStep * 0.9, ringStep * 0.9);
-      const r = rBase + rOffset;
+    // thickness: magnitude (distance from 0)
+    const w = map(abs(a), 0, maxAbs, 0.5, ringStep * 1.25);
 
-      // thickness by magnitude
-      const w = map(abs(a), 0, maxAbs, 0.5, ringStep * 1.25);
+    // fade older years slightly (based on yearIndex)
+    const alpha = map(s.yearIndex, 0, nYears - 1, 0.18, 1.0);
 
-      stroke(hue, 85, 95, alpha);
-      strokeWeight(w);
-      arc(0, 0, 2 * r, 2 * r, t0, t1);
-    }
+    stroke(hue, 85, 95, alpha);
+    strokeWeight(w);
+    arc(0, 0, 2 * r, 2 * r, t0, t1);
   }
 
-  if (showLabels) {
-    push();
-    rotate(-rot); // keep labels upright
-    drawMonthTicks(outerR + 10);
-    drawLegend(-width * 0.47, -height * 0.46);
-    pop();
-  }
+  // overlay UI (not rotated)
+  push();
+  resetMatrix();
+  drawUI();
+  pop();
 }
 
 function keyPressed() {
-  if (key === "l" || key === "L") showLabels = !showLabels;
+  if (key === " " ) paused = !paused;
+  if (key === "r" || key === "R") { revealCount = 0; lastStepMs = millis(); }
+  if (key === "+" || key === "=") intervalMs = max(50, intervalMs - 100);  // faster
+  if (key === "-" || key === "_") intervalMs = min(5000, intervalMs + 100); // slower
 }
 
-// ---------- parsing ----------
+// ---------------- Parsing ----------------
 
 function parseGistempLikeTable(lines) {
   rows = [];
@@ -104,15 +109,11 @@ function parseGistempLikeTable(lines) {
   for (let i = 0; i < lines.length; i++) {
     const line = (lines[i] || "").trim();
     if (!line) continue;
-
-    // skip headers (handles both "Year Jan..." and "Year,Jan,...")
     if (line.startsWith("Land-Ocean:")) continue;
     if (line.startsWith("Year")) continue;
 
-    // IMPORTANT: split by comma or whitespace
+    // handles comma CSV OR whitespace table
     const tok = line.split(/[,\s]+/).filter(Boolean);
-
-    // needs Year + 12 months
     if (tok.length < 13) continue;
 
     const year = parseInt(tok[0], 10);
@@ -137,58 +138,48 @@ function parseGistempLikeTable(lines) {
   }
 
   rows.sort((a, b) => a.year - b.year);
-  console.log("Parsed years:", rows.length, "from", rows[0]?.year, "to", rows.at(-1)?.year);
 }
 
-// ---------- labels ----------
-
-function drawMonthTicks(r) {
-  const months = ["J","F","M","A","M","J","J","A","S","O","N","D"];
-  textAlign(CENTER, CENTER);
-  textSize(12);
-
-  for (let m = 0; m < 12; m++) {
-    const a = -HALF_PI + m * (TWO_PI / 12);
-
-    stroke(0, 0, 92, 0.22);
-    strokeWeight(1);
-    line(cos(a) * (r - 6), sin(a) * (r - 6), cos(a) * (r + 6), sin(a) * (r + 6));
-
-    noStroke();
-    fill(0, 0, 92, 0.75);
-    text(months[m], cos(a) * (r + 22), sin(a) * (r + 22));
+function buildSegments() {
+  segments = [];
+  for (let yi = 0; yi < rows.length; yi++) {
+    for (let mi = 0; mi < 12; mi++) {
+      segments.push({
+        year: rows[yi].year,
+        yearIndex: yi,
+        monthIndex: mi,
+        anomaly: rows[yi].months[mi]
+      });
+    }
   }
 }
 
-function drawLegend(x, y) {
-  push();
-  translate(x, y);
+// ---------------- UI ----------------
+
+function drawUI() {
+  // current segment info
+  let label = "Building…";
+  if (revealCount > 0) {
+    const s = segments[min(revealCount - 1, segments.length - 1)];
+    const val = isFinite(s.anomaly) ? nf(s.anomaly, 1, 2) : "missing";
+    label = `${s.year} ${monthNames[s.monthIndex]}   anomaly: ${val}°C`;
+  }
+  const done = (revealCount >= segments.length);
 
   noStroke();
-  fill(0, 0, 92, 0.85);
+  fill(0, 0, 100, 0.85);
+  textSize(14);
   textAlign(LEFT, TOP);
+  text("Climate Clock (reveals 1 month segment at a time)", 16, 14);
+
   textSize(12);
-  text("Climate Clock — monthly temperature anomaly", 0, 0);
+  fill(0, 0, 100, 0.75);
+  text(label, 16, 36);
+  text(`segments: ${revealCount} / ${segments.length}   speed: ${intervalMs}ms   (space=pause, r=reset, +/- speed)`, 16, 54);
 
-  textSize(11);
-  fill(0, 0, 92, 0.7);
-  text("Blue=cooler  Red=warmer   (Press L to toggle labels)", 0, 18);
-
-  // gradient bar
-  const w = 170, h = 10;
-  for (let i = 0; i < w; i++) {
-    const t = i / (w - 1);
-    const v = lerp(minA, maxA, t);
-    const hue = map(v, minA, maxA, 210, 0);
-    stroke(hue, 85, 95, 1);
-    line(i, 42, i, 42 + h);
+  if (done) {
+    fill(0, 0, 100, 0.9);
+    textSize(12);
+    text("Complete.", 16, 74);
   }
-
-  noStroke();
-  fill(0, 0, 92, 0.7);
-  text(nf(minA, 1, 2), 0, 56);
-  textAlign(RIGHT, TOP);
-  text(nf(maxA, 1, 2), w, 56);
-
-  pop();
 }
