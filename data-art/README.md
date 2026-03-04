@@ -1,6 +1,6 @@
 # Oeuvre inspiré par un algorithme
 
-Nom de l'oeuvre: Réchauffement climatique
+Nom de l'oeuvre: No drill baby drill Mr.Trump
 
 ## Description de l'oeuvre
 Cet oeuvre est basée sur un jeu de données public de la NASA GISS Surface Temperature Analysis (GISTEMP)
