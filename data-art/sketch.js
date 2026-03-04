@@ -33,9 +33,10 @@ function draw() {
   // advance reveal counter
   if (!paused) {
     const now = millis();
+    // increments reveal count when enough time has passed
     if (now - lastStepMs >= intervalMs) {
       const steps = floor((now - lastStepMs) / intervalMs);
-      revealCount = min(revealCount + steps, segments.length);
+      revealCount = min(revealCount + steps, segments.length); // Update reveal count
       lastStepMs += steps * intervalMs;
     }
   }
@@ -54,6 +55,8 @@ function draw() {
   noFill();
   strokeCap(SQUARE);
 
+  // Redraw all segments up to reavealCount
+  // Syncronized on revealCount that is updated
   for (let i = 0; i < revealCount; i++) {
     const s = segments[i];
     const a = s.anomaly;
@@ -70,7 +73,7 @@ function draw() {
     // color map
     const hue = map(a, minA, maxA, 210, 0);
 
-    // radius offset 
+    // radius offset based on the value of a (positive = outward, negative = inward)
     const rOffset = map(a, minA, maxA, -ringStep * 0.9, ringStep * 0.9);
     const r = rBase + rOffset;
 
@@ -109,7 +112,7 @@ function parseGistempLikeTable(lines) {
     if (line.startsWith("Land-Ocean:")) continue;
     if (line.startsWith("Year")) continue;
 
-    // handles comma CSV OR whitespace
+    // split line in tokens (ex. ["1880", "-.19", "-.25", "-.10"])
     const tok = line.split(/[,\s]+/).filter(Boolean);
     if (tok.length < 13) continue;
 
